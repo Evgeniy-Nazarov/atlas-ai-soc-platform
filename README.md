@@ -1,121 +1,237 @@
-# Atlas
+# Atlas — AI-Assisted SOC Platform
 
-AI-first SOC on top of Wazuh with a local Qwen model on a Mac Studio.
+![Status](https://img.shields.io/badge/Status-Active-success)
+![SOC](https://img.shields.io/badge/SOC-Platform-blue)
+![SIEM](https://img.shields.io/badge/SIEM-Wazuh-orange)
+![AI](https://img.shields.io/badge/AI-Local%20Qwen%20%7C%20MLX-blueviolet)
+![Learning](https://img.shields.io/badge/Learning-Centre-red)
+![Host](https://img.shields.io/badge/Host-Mac%20Studio-lightgrey)
+![Version](https://img.shields.io/badge/Version-1.9.15-informational)
 
-![The Atlas Home screen: open alerts, the last 24 hours, the lab map, the decision queue and the runtime status](screenshots/home.png)
+> **Grow together, case by case.**
+> A SOC platform on my own homelab: the analyst learns from every case, and Atlas remembers every decision.
 
-*The Home screen of v1.4.3, rendered on test data. More screens are coming.*
+---
 
-## What this is
+## Project Overview
 
-Atlas is a tool I built for my own SOC (a security operations centre: the place where someone watches security alerts and decides which ones matter). It takes the alerts from Wazuh (open-source security monitoring), gathers the facts around each one, and lets a language model that runs on my own Mac explain what it sees. Every decision is mine. The model only explains, and only from facts that were actually recorded.
+Atlas is the SOC platform I built on top of my [SOC Homelab Enterprise](https://github.com/Evgeniy-Nazarov/soc-homelab-enterprise).
 
-| | |
-| --- | --- |
-| **What** | An alert-investigation platform for one analyst, with a local AI assistant that shows its evidence |
-| **Stack** | Python/FastAPI, PostgreSQL, React/TypeScript, Qdrant, Qwen via MLX; alerts from Wazuh, Suricata and FortiGate |
-| **Scale** | About 1.9 million alerts from my lab in the catalog |
-| **Status** | v1.4.3, in daily use on my lab since September 2026. The source is not public yet; this repository documents the system |
+It reads every alert from Wazuh, puts all the evidence for an alert on one screen, and lets a local AI model explain what happened. **I make every decision.** Atlas remembers those decisions, and its **Learning Centre** turns my own cases into practice.
 
-## Why I built it
+Everything runs on one Mac Studio. No cloud AI, and no logs leave the lab.
 
-Wazuh in my lab fires thousands of alerts a day. Most are routine, a few matter, and telling them apart means opening raw JSON, checking the host, the user, the process and its parent, and remembering what I decided last time. The first time I worked an alert like that by hand, it took me about 30 minutes ([case study 92205](docs/case-study-92205.md)).
+Atlas helps me:
 
-Cloud AI assistants were not an option. A command line from a workstation or an internal DNS query is exactly the data I will not send to a third party. And a model that summarises logs freely will invent a parent process or a verdict that is not in the data. In security work a confident wrong answer is worse than no answer.
+* 🔎 investigate alerts faster, with the evidence in one place
+* 🧪 test my detections with safe exercises in my own lab
+* 🎓 learn from my own cases, every day
+* 🤖 use AI safely: it explains and cites, it never decides
 
-So the model runs on the same machine as the data, and it is kept in its place: it reads recorded evidence and explains. I decide.
+---
 
-## What I built
+## Atlas + SOC Lab Topology
 
-One application that:
+<div align="center">
+  <a href="02-Architecture/atlas-topology.png">
+    <img src="02-Architecture/atlas-topology.png" width="100%">
+  </a>
+</div>
 
-- collects every alert from Wazuh and keeps the original record unchanged;
-- shows on one card who did what to whom, how often it happened before and what I decided last time, before I ask anything;
-- walks me through an investigation with a checklist I wrote (a playbook);
-- lets a local Qwen model answer my questions with a footnote on every sentence that points at a recorded field;
-- records my decision and keeps the whole case as an audit record that cannot be edited afterwards.
+---
 
-## How it works
+## How It Works
 
-```mermaid
-%%{init: {"themeVariables": {"fontSize": "18px"}}}%%
-flowchart TB
-  subgraph S1["1 · Collect"]
-    direction LR
-    A["Wazuh, Suricata,<br/>FortiGate alerts"] --> B["Atlas collector<br/>keeps every original"] --> C[("Alert catalog<br/>~1.9 M alerts")]
-  end
-  subgraph S2["2 · Investigate"]
-    direction LR
-    D["Triage card<br/>facts Atlas computed"] --> E["Local AI model<br/>Qwen on my Mac"] --> F{"Every claim<br/>backed by a fact?"}
-  end
-  subgraph S3["3 · Decide"]
-    direction LR
-    G["I make<br/>the decision"] --> H[("Audit log<br/>never rewritten")]
-  end
-  S1 --> S2
-  S2 -- "yes: shown to me · no: rejected" --> S3
+```text
+SOC lab (Windows + Sysmon, DC01, Suricata, FortiGate, AWS)
+        ↓
+Wazuh  (alerts + archives)
+        ↓  read-only
+Atlas collector  →  PostgreSQL catalog (original event + SHA-256)
+        ↓
+Triage card  →  local AI explains, citing every sentence
+        ↓
+The analyst decides  →  Atlas remembers  →  Learning Centre
 ```
 
-1. **Collect.** A collector pulls every alert from Wazuh in bounded, resumable batches and stores the original document byte for byte. A gap in collection is shown as a gap, never as "nothing happened".
-2. **Prepare.** The alerts become searchable: exact counts, filters by field, a timeline by severity.
-3. **Triage.** When I open an alert (triage: deciding whether it matters), one card shows the host, user, process and parent, how often this fired in the last day, week and month, how rare it is across hosts, and what I decided on similar alerts. Atlas computes these; the model is never asked to count.
-4. **Investigate.** A playbook I wrote lists the checks. I record each outcome myself. A run that skips a required check closes as "completed with gaps", never as a clean pass.
-5. **Ask.** The local model answers from the evidence Atlas selected for that question. Each sentence cites a recorded field; Atlas validates every citation before the answer is shown and rejects an answer that cites what it was not given.
-6. **Decide.** I record the decision: false positive, expected activity or a finished investigation. The model then writes a closing summary of the closed record, with citations, and quotes my decision rather than making one.
-7. **Look up, on click.** One click sends one public IP, domain, hash or CVE to one named threat-intelligence provider (OSINT: public lookups about known attackers). Private addresses are refused before any network call.
+---
 
-## Security principles
+## How Atlas and the Lab Work Together
 
-- A human makes every decision. Model output has no write path to decisions, steps or closures.
-- The model cites only recorded facts. An answer with a citation Atlas cannot resolve is rejected.
-- OSINT only on click. Nothing is sent anywhere automatically.
-- Private IPs and internal names never leave the host.
-- The audit is immutable. Decisions, steps and collection runs are append-only; history is never rewritten.
+| # | Link | What happens |
+| - | ---- | ------------ |
+| ① | **WAZUH-01 → Collector** | Every alert and archived event flows into Atlas through a read-only profile |
+| ② | **Hyper-V host → LAB-OPS** | Atlas sees VM state and checkpoints over JEA, read-only |
+| ③ | **Mac Studio = Atlas host** | Atlas and its AI models run on the Mac in VLAN 40; the UI is on 127.0.0.1 only |
+| ④ | **Exercises ↔ Red Team** | Atlas plans the exercise window; I run Atomic Red Team; the alerts come back through ① |
 
-More in [docs/security.md](docs/security.md).
+**Atlas reads the lab. It never changes the lab and never runs attacks.**
+
+---
+
+## Core Stack
+
+| Category        | Technology                                                |
+| --------------- | --------------------------------------------------------- |
+| Data source     | Wazuh (alerts + archives, read-only)                      |
+| Backend         | Python, FastAPI                                           |
+| Frontend        | Next.js, TypeScript                                       |
+| Database        | PostgreSQL                                                |
+| Local AI        | Qwen3.6-27B · Qwen3.6-35B-A3B · Qwen3-Embedding-8B (MLX)  |
+| Voice           | Whisper large-v3-turbo · Kokoro-82M · wav2vec2            |
+| Host            | Mac Studio (M2 Ultra), native code-signed runtime         |
+| Secrets         | macOS Keychain behind a dedicated broker                  |
+| Lab             | FortiGate · Suricata · Active Directory · Hyper-V · AWS   |
+
+---
+
+## What Atlas Does
+
+### 🔎 Investigate
+
+* One triage card per alert: what happened, user, host, process and parent
+* The verified process chain, the decoded command, PowerShell script blocks (4104) in one click
+* How often the rule fires, how rare it is, and what I decided last time
+* Threat intel (VirusTotal, AbuseIPDB) only when I click
+* Cases, playbooks, findings and a closing summary
+
+### 🧪 Test My Detections
+
+* Plan an exercise: host, MITRE ATT&CK technique, stop rule, VM checkpoint
+* I run the Atomic Red Team test myself — Atlas never runs attacks
+* Exercise alerts are marked and kept out of real metrics
+* An after-action report: what was detected, what was missed, what I did, the evidence
+
+### 🤖 Local AI That Shows Its Work
+
+* Every sentence must point to a real field in the event, or the answer is rejected
+* Event text is treated as data, never as instructions
+* An optional second opinion on an exercise report, labelled "AI-generated"
+* **The model never decides.** It has no way to close, escalate or change anything
+
+### 🎓 Learning Centre — the analyst grows with Atlas
+
+* SOC topics and MITRE ATT&CK, with progress and where to work next
+* **Blind replays:** re-work a closed case without seeing my old answer
+* English for the job: reading, words, pronunciation
+* **Interview trainer:** study a question, answer out loud, get feedback on key points, timing and pronunciation
+
+### 🧠 Memory — Atlas grows with the analyst
+
+* My past decisions show up as context on the next similar alert
+* Similar cases are found by meaning, not only by rule number
+* Noise rules are suggested from my decisions and used only when I approve them
+
+### 🛡️ Secure by Design
+
+* UI on 127.0.0.1 only, code-signed runtime checked at start
+* Secrets in the macOS Keychain, never in prompts or logs
+* Deny by default, named permissions, append-only audit
+* Daily encrypted backups with a checked restore, every install has a rollback
+
+---
+
+## Current Status
+
+| Component                                  | Status               |
+| ------------------------------------------ | -------------------- |
+| Alert collection from Wazuh                | ✅ Operational        |
+| Triage card, process chain, Decoded        | ✅ Operational        |
+| PowerShell script blocks (4104)            | ✅ Operational        |
+| Cases, playbooks, findings                 | ✅ Operational        |
+| Lab exercises + after-action reports       | ✅ Operational        |
+| Local AI chat with citations               | ✅ Operational        |
+| Learning Centre + interview trainer        | ✅ Operational        |
+| LAB-OPS (Hyper-V health, read-only)        | ✅ Operational        |
+| Backups with restore check                 | ✅ Operational        |
+| Users and roles                            | 🔜 Planned            |
+
+---
 
 ## Numbers
 
 | | |
 | --- | --- |
-| Tests in the release gate | about 6.7k backend and 668 frontend |
-| Alert catalog | about 1.9 million records |
-| Architecture decisions | 155 ADRs (an ADR is a written, numbered architecture decision) |
-| Triage card lookups | 0.5 s over 1 million events |
-| Qwen golden set | 15/30 to 27/30 valid cited answers after one prompt revision |
-| Install downtime | 2 h 53 min (v1.0) to 44 s (v1.3) |
+| Alerts collected from the lab | ~2.4 million |
+| Automated tests in every release | 10,000+ backend · 1,800+ frontend · browser end-to-end · visual checks |
+| Architecture decisions (ADRs) | 177 |
+| Release process | full test gate → CI on the exact commit → scripted install with rollback |
 
-## Stack
+---
 
-| | |
+## Skills Demonstrated
+
+| Area | Skills |
 | --- | --- |
-| Backend | Python, FastAPI |
-| Database | PostgreSQL |
-| Frontend | React, TypeScript |
-| Vector index | Qdrant |
-| Model | Qwen via MLX (Apple's framework for running models on Apple silicon), on a Mac Studio |
-| Alert sources | Wazuh, Suricata, FortiGate |
+| Security Operations | Alert triage, process tree and command-line analysis, PowerShell 4104, timelines, cases and playbooks |
+| Detection Engineering | Purple-team exercises, Atomic Red Team, MITRE ATT&CK coverage, noise tuning, after-action reports |
+| Security Engineering | Least privilege, read-only integrations, secrets in the Keychain, SHA-256 evidence, audit, backups and rollback |
+| AI for Security | Local LLMs on Apple silicon, answers grounded in evidence, safe handling of log text, human-in-the-loop |
 
-## How a real alert goes through it
+---
 
-Two cases from my lab, written as what I saw, what the model cited and what I decided:
+## Repository Structure
 
-- [A password-guessing attack on a test web app](docs/case-study-hydra.md): Hydra from my Kali machine against DVWA; a true positive with no compromise.
-- [A PowerShell file write that looked like a loader](docs/case-study-92205.md): the Wazuh agent's own configuration check; closed as expected activity.
+| Section                   | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| 01-Product-Tour           | The main screens and a short video                            |
+| 02-Architecture           | Topology, components, trust boundaries                        |
+| 03-Lab-Integration        | How Atlas reads the lab: Wazuh → Collector, Hyper-V → LAB-OPS |
+| 04-Investigation-Workflow | Triage card, process chain, Decoded, script blocks, cases     |
+| 05-AI-Models              | Local models and how every answer is tied to evidence         |
+| 06-Memory                 | How Atlas grows with the analyst                              |
+| 07-Learning-Centre        | How the analyst grows with Atlas                              |
+| 08-Lab-Exercises          | Purple-team exercises, MITRE ATT&CK coverage, reports         |
+| 09-Security               | How Atlas protects itself and keeps evidence intact           |
+| 10-Engineering-Process    | ADRs, tests, design-first, releases with rollback             |
+| 11-Case-Studies           | Real alerts and exercises, end to end                         |
+| 12-Lessons-Learned        | What broke and what it taught me                              |
+| 13-Roadmap                | What's next                                                   |
 
-The components, the trust boundaries and the path of one alert are in [docs/architecture.md](docs/architecture.md).
+Release history: [CHANGELOG.md](CHANGELOG.md)
 
-## What I'd do next
+------------------------- | ----------------------------------------------------- |
+| 01-Overview               | What Atlas is, why I built it, what it does not do    |
+| 02-Architecture           | Topology, components, trust boundaries                |
+| 03-Telemetry-Pipeline     | From the lab sensors through Wazuh into Atlas         |
+| 04-Investigation-Workflow | Triage card, evidence, decoding, script blocks, cases |
+| 05-AI-Models              | Local models and how answers are tied to evidence     |
+| 06-Lab-Exercises          | Purple-team exercises and after-action reports        |
+| 07-Lab-Operations         | Read-only Hyper-V health and lab sensors              |
+| 08-Security               | How Atlas protects itself                             |
+| 09-Evidence-Integrity     | Hashes, provenance, findings                          |
+| 10-Engineering-Process    | ADRs, tests, design-first, AI-assisted development    |
+| 11-Learning-Centre        | How Atlas teaches its analyst                         |
+| 12-Case-Studies           | Real alerts and exercises, end to end                 |
+| 13-Metrics                | Numbers                                               |
+| 14-Roadmap                | What's next                                           |
+| 99-Archive                | Earlier versions                                      |
 
-- Scheduled encrypted backups with a weekly restore check, so a backup counts only after it has been restored.
-- Noise suggestions that I approve, never automatic muting.
-- Similar-case search over my closed investigations with a better embedding model.
-- One controlled response, a firewall block of a single IP, with explicit approval, a dry run, a time limit and automatic rollback.
-- Users and roles, if the tool ever has a second analyst.
+---
 
-## Contact
+## Certifications & Training
 
-- GitHub: [github.com/Evgeniy-Nazarov](https://github.com/Evgeniy-Nazarov)
-- The lab Atlas runs on: [soc-homelab-enterprise](https://github.com/Evgeniy-Nazarov/soc-homelab-enterprise)
+* CompTIA Security+
+* Cydeo SOC Analyst Program
+* RangeForce SOC / Cybersecurity Training
 
-Built with AI coding assistants under my architecture, security requirements and review.
+---
+
+## Roadmap
+
+* Users and roles
+* One controlled response action (a single firewall block) with approval, a dry run and automatic rollback
+* A mobile app for the Learning Centre
+* More exercises and case studies
+
+---
+
+## Summary
+
+Atlas turns my SOC homelab into a working SOC: alerts come in from Wazuh, the evidence is ready, a local AI explains it, and I decide. Every case makes me a better analyst, and every decision makes Atlas more useful.
+
+**Grow together, case by case.**
+
+The lab Atlas runs on: [soc-homelab-enterprise](https://github.com/Evgeniy-Nazarov/soc-homelab-enterprise)
+
+*Built by Yevhenii Nazarov with AI coding assistants, under my architecture, security rules and review.*
