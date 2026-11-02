@@ -190,23 +190,6 @@ The analyst decides  →  Atlas remembers  →  Learning Centre
 
 Release history: [CHANGELOG.md](CHANGELOG.md)
 
-------------------------- | ----------------------------------------------------- |
-| 01-Overview               | What Atlas is, why I built it, what it does not do    |
-| 02-Architecture           | Topology, components, trust boundaries                |
-| 03-Telemetry-Pipeline     | From the lab sensors through Wazuh into Atlas         |
-| 04-Investigation-Workflow | Triage card, evidence, decoding, script blocks, cases |
-| 05-AI-Models              | Local models and how answers are tied to evidence     |
-| 06-Lab-Exercises          | Purple-team exercises and after-action reports        |
-| 07-Lab-Operations         | Read-only Hyper-V health and lab sensors              |
-| 08-Security               | How Atlas protects itself                             |
-| 09-Evidence-Integrity     | Hashes, provenance, findings                          |
-| 10-Engineering-Process    | ADRs, tests, design-first, AI-assisted development    |
-| 11-Learning-Centre        | How Atlas teaches its analyst                         |
-| 12-Case-Studies           | Real alerts and exercises, end to end                 |
-| 13-Metrics                | Numbers                                               |
-| 14-Roadmap                | What's next                                           |
-| 99-Archive                | Earlier versions                                      |
-
 ---
 
 ## Certifications & Training
