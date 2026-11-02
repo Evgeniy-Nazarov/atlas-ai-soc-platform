@@ -4,7 +4,21 @@ Atlas ships in small releases. Every release passes the full test gate and CI on
 
 ---
 
-## v1.9.15 — November 2026 (installed)
+## v1.9.17 — November 2026 (installed)
+
+* Study: the player on its own row, the translation card without opening Ask, hold Space to answer, "Heard" for the current try only
+* Script blocks: long blocks scroll inside their card, and text stored with a broken encoding is shown as stored, with a hint
+* Exercise report: level 12+ alerts in the window kept as real and counted for detection
+* Chat and Practice layout fixes from daily use
+
+## v1.9.16 — November 2026
+
+* **Process chain as a table** under the graph, with hashes and actions for the selected process
+* **Script blocks:** the child process first, search over every block read, suspicious patterns marked, module autoload folded
+* Interview → Study redesigned: word help under the chosen word, key points, a four-step study cycle
+* Reader: the hint over a word shows its first meaning
+
+## v1.9.15 — November 2026
 
 * **Decoded view** for Base64 and `-EncodedCommand` arguments
 * **PowerShell script blocks (4104)** around an alert in one click

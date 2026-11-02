@@ -6,7 +6,7 @@
 ![AI](https://img.shields.io/badge/AI-Local%20Qwen%20%7C%20MLX-blueviolet)
 ![Learning](https://img.shields.io/badge/Learning-Centre-red)
 ![Host](https://img.shields.io/badge/Host-Mac%20Studio-lightgrey)
-![Version](https://img.shields.io/badge/Version-1.9.15-informational)
+![Version](https://img.shields.io/badge/Version-1.9.17-informational)
 
 > **Grow together, case by case.**
 > A SOC platform on my own homelab: the analyst learns from every case, and Atlas remembers every decision.
@@ -144,7 +144,7 @@ The analyst decides  →  Atlas remembers  →  Learning Centre
 | Learning Centre + interview trainer        | ✅ Operational        |
 | LAB-OPS (Hyper-V health, read-only)        | ✅ Operational        |
 | Backups with restore check                 | ✅ Operational        |
-| Users and roles                            | 🔜 Planned            |
+| Users and roles                            | 🛠️ In progress        |
 
 ---
 
